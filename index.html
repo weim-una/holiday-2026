@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>年間休日管理 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+  :root {
+    --paper: #f6f2e9;
+    --paper2: #efe9db;
+    --ink: #20303f;
+    --ink-soft: #5b6b78;
+    --indigo: #2f5d8a;
+    --vermilion: #c2492f;
+    --amber: #c98a2b;
+    --line: #d8cfbd;
+    --card: #fffdf8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: 'Zen Kaku Gothic New', system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 12% 0%, #fbf8f1 0%, transparent 55%),
+      var(--paper);
+    -webkit-font-smoothing: antialiased;
+  }
+  .hm-root {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+  .hm-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom: 4px; }
+  .hm-title { font-family:'Shippori Mincho B1',serif; font-weight:700; font-size: 22px; letter-spacing:.04em; }
+  .hm-year { font-family:'Shippori Mincho B1',serif; color: var(--ink-soft); font-size:13px; }
+  .hm-note { font-size:11px; color:var(--ink-soft); line-height:1.6; margin: 6px 0 16px; border-left:3px solid var(--line); padding-left:10px; }
+
+  .hero { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .hero-card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 14px 12px; }
+  .hero-card .lab { font-size:12px; color:var(--ink-soft); font-weight:500; }
+  .hero-card .val { font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:34px; line-height:1.05; margin-top:6px; }
+  .hero-card .unit { font-size:13px; font-family:'Zen Kaku Gothic New'; color:var(--ink-soft); margin-left:3px; font-weight:400; }
+  .hero-card.holiday .val { color:var(--indigo); }
+  .hero-card.paid .val { color:var(--vermilion); }
+  .neg { color:#b23b2a !important; }
+
+  .grid4 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .mini { background:var(--paper2); border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
+  .mini .lab { font-size:11px; color:var(--ink-soft); }
+  .mini .val { font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:19px; margin-top:2px; }
+  .mini .sub { font-size:10px; color:var(--ink-soft); margin-left:4px; font-family:'Zen Kaku Gothic New'; font-weight:400; }
+  .total { margin-bottom:18px; }
+
+  .navbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .navbar button { background:none; border:1px solid var(--line); border-radius:8px; width:38px; height:38px; font-size:18px; color:var(--ink); cursor:pointer; }
+  .navbar button:active { background:var(--paper2); }
+  .navbar .m { font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:18px; }
+
+  .cal { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+  .dow { text-align:center; font-size:11px; color:var(--ink-soft); padding:2px 0; font-weight:500; }
+  .dow.sun { color:var(--vermilion); }
+  .dow.sat { color:var(--indigo); }
+  .cell { aspect-ratio:1; border-radius:10px; border:1px solid var(--line); background:var(--card);
+          display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;
+          font-size:13px; user-select:none; transition:transform .05s; }
+  .cell:active { transform:scale(.93); }
+  .cell.empty { border:none; background:none; cursor:default; }
+  .cell.disabled { opacity:.32; cursor:not-allowed; }
+  .cell .d { font-weight:500; }
+  .cell .tag { font-size:9px; margin-top:1px; font-weight:700; letter-spacing:.02em; }
+  .cell.sun .d { color:var(--vermilion); }
+  .cell.sat .d { color:var(--indigo); }
+  .cell.on-holiday { background:rgba(47,93,138,.14); border-color:var(--indigo); }
+  .cell.on-paid { background:rgba(194,73,47,.13); border-color:var(--vermilion); }
+  .cell.on-half { background:rgba(201,138,43,.15); border-color:var(--amber); }
+  .cell.on-holiday .tag { color:var(--indigo); }
+  .cell.on-paid .tag { color:var(--vermilion); }
+  .cell.on-half .tag { color:var(--amber); }
+
+  .legend { display:flex; gap:14px; justify-content:center; margin:14px 0 4px; flex-wrap:wrap; }
+  .legend span { font-size:11px; color:var(--ink-soft); display:flex; align-items:center; gap:5px; }
+  .dot { width:11px; height:11px; border-radius:3px; display:inline-block; }
+  .tap-hint { text-align:center; font-size:11px; color:var(--ink-soft); margin-top:8px; }
+
+  .setbtn { width:100%; margin-top:18px; background:none; border:1px solid var(--line); border-radius:10px;
+            padding:12px; font-family:'Zen Kaku Gothic New'; font-size:13px; color:var(--ink-soft); cursor:pointer; }
+  .panel { margin-top:10px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; display:none; }
+  .panel.open { display:block; }
+  .field { margin-bottom:12px; }
+  .field:last-child { margin-bottom:0; }
+  .field label { display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; }
+  .field input { width:100%; padding:10px; border:1px solid var(--line); border-radius:8px;
+                 font-family:'Zen Kaku Gothic New'; font-size:16px; background:var(--paper); color:var(--ink); }
+  .field .help { font-size:10px; color:var(--ink-soft); margin-top:4px; line-height:1.5; }
+  .reset { background:none; border:none; color:var(--vermilion); font-size:12px; cursor:pointer; text-decoration:underline; padding:0; margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="app" class="hm-root">
+  <div class="hm-head">
+    <div class="hm-title">年間休日管理</div>
+    <div class="hm-year">2026年</div>
+  </div>
+  <div class="hm-note">
+    年間休日（所定休日）と有給は別枠です。半休は0.5日として有給に換算します。日付をタップすると 休み→有給→半休→解除 と切替わります。データはこの端末のブラウザに保存されます。
+  </div>
+
+  <div class="hero">
+    <div class="hero-card holiday">
+      <div class="lab">休日 残り</div>
+      <div class="val"><span id="holidayLeft">116</span><span class="unit">日</span></div>
+    </div>
+    <div class="hero-card paid">
+      <div class="lab">有給 残り</div>
+      <div class="val"><span id="paidLeft">10</span><span class="unit">日</span></div>
+    </div>
+  </div>
+
+  <div class="grid4">
+    <div class="mini"><div class="lab">休日合計</div><div class="val"><span id="stHoliday">0</span><span class="sub">日</span></div></div>
+    <div class="mini"><div class="lab">有給合計</div><div class="val"><span id="stPaidTotal">0</span><span class="sub">日</span></div></div>
+    <div class="mini"><div class="lab">有給</div><div class="val"><span id="stPaidFull">0</span><span class="sub">日</span></div></div>
+    <div class="mini"><div class="lab">半休（日換算）</div><div class="val"><span id="stHalf">0</span><span class="sub" id="stHalfCount">日 / 0回</span></div></div>
+  </div>
+  <div class="mini total"><div class="lab">総合計（休日＋有給）</div><div class="val"><span id="stGrand">0</span><span class="sub">日</span></div></div>
+
+  <div class="navbar">
+    <button id="prevM" aria-label="前月">‹</button>
+    <div class="m" id="monthLabel">1月</div>
+    <button id="nextM" aria-label="翌月">›</button>
+  </div>
+  <div class="cal" id="cal"></div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--indigo)"></i>休み</span>
+    <span><i class="dot" style="background:var(--vermilion)"></i>有給</span>
+    <span><i class="dot" style="background:var(--amber)"></i>半休</span>
+  </div>
+  <div class="tap-hint">開始日より前の日付は操作できません</div>
+
+  <button class="setbtn" id="setBtn">設定（開始日・年間休日数・有給付与日数）</button>
+  <div class="panel" id="panel">
+    <div class="field">
+      <label>開始日（入社時期に合わせて変更）</label>
+      <input type="date" id="inStart" min="2026-01-01" max="2026-12-31" />
+      <div class="help">この日より前の集計は除外されます。</div>
+    </div>
+    <div class="field">
+      <label>年間休日数（所定休日）</label>
+      <input type="number" id="inAnnual" min="0" />
+      <div class="help">年度途中入社は116日の単純日割りではなく、開始日〜12/31の実際の所定休日数を入力してください。</div>
+    </div>
+    <div class="field">
+      <label>有給付与日数</label>
+      <input type="number" id="inGranted" min="0" />
+      <div class="help">労基法では勤続6か月で10日、以降 11／12／14／16／18／20日。前倒し付与や繰越分があれば実数を入力してください。</div>
+    </div>
+    <button class="reset" id="resetBtn">記録をすべてリセット</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var YEAR = 2026;
+  var WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+  var MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // 2026は平年
+  var TYPES = { holiday: "休", paid: "有", half: "半" };
+  var CYCLE = [null, "holiday", "paid", "half"];
+  var MARKS_KEY = "holiday-marks-2026";
+  var SETTINGS_KEY = "holiday-settings-2026";
+
+  var marks = {};
+  var settings = { startDate: "2026-01-01", annualHolidays: 116, grantedPaidLeave: 10 };
+  var month = 0;
+
+  // ---- 保存（localStorage、無ければメモリ） ----
+  var mem = {};
+  function lsGet(k) { try { if (window.localStorage) return localStorage.getItem(k); } catch (e) {} return (k in mem) ? mem[k] : null; }
+  function lsSet(k, v) { try { if (window.localStorage) { localStorage.setItem(k, v); return; } } catch (e) {} mem[k] = v; }
+
+  function load() {
+    var m = lsGet(MARKS_KEY); if (m) { try { marks = JSON.parse(m); } catch (e) {} }
+    var s = lsGet(SETTINGS_KEY); if (s) { try { var o = JSON.parse(s); for (var key in o) settings[key] = o[key]; } catch (e) {} }
+  }
+  function saveMarks() { lsSet(MARKS_KEY, JSON.stringify(marks)); }
+  function saveSettings() { lsSet(SETTINGS_KEY, JSON.stringify(settings)); }
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function keyOf(mo, d) { return YEAR + "-" + pad(mo + 1) + "-" + pad(d); }
+  function firstWeekday(mo) { return new Date(YEAR, mo, 1).getDay(); }
+  function fmtNum(n) { return (n % 1 === 0) ? String(n) : n.toFixed(1); }
+
+  function computeStats() {
+    var holiday = 0, paidFull = 0, half = 0;
+    var start = settings.startDate;
+    for (var k in marks) {
+      if (k < start) continue;
+      var v = marks[k];
+      if (v === "holiday") holiday++;
+      else if (v === "paid") paidFull++;
+      else if (v === "half") half++;
+    }
+    var halfDays = half * 0.5;
+    var paidTotal = paidFull + halfDays;
+    return {
+      holiday: holiday, paidFull: paidFull, halfCount: half, halfDays: halfDays,
+      paidTotal: paidTotal, grandTotal: holiday + paidTotal,
+      holidayLeft: settings.annualHolidays - holiday,
+      paidLeft: settings.grantedPaidLeave - paidTotal
+    };
+  }
+
+  function setVal(id, n, negCheck) {
+    var el = document.getElementById(id);
+    el.textContent = fmtNum(n);
+    if (negCheck) { if (n < 0) el.classList.add("neg"); else el.classList.remove("neg"); }
+  }
+
+  function updateStats() {
+    var s = computeStats();
+    setVal("holidayLeft", s.holidayLeft, true);
+    setVal("paidLeft", s.paidLeft, true);
+    setVal("stHoliday", s.holiday);
+    setVal("stPaidTotal", s.paidTotal);
+    setVal("stPaidFull", s.paidFull);
+    setVal("stHalf", s.halfDays);
+    document.getElementById("stHalfCount").textContent = "日 / " + s.halfCount + "回";
+    setVal("stGrand", s.grandTotal);
+  }
+
+  function buildCalendar() {
+    document.getElementById("monthLabel").textContent = (month + 1) + "月";
+    var cal = document.getElementById("cal");
+    var html = "";
+    for (var w = 0; w < 7; w++) {
+      var cls = w === 0 ? "dow sun" : (w === 6 ? "dow sat" : "dow");
+      html += '<div class="' + cls + '">' + WEEKDAYS[w] + "</div>";
+    }
+    var fw = firstWeekday(month);
+    for (var e = 0; e < fw; e++) html += '<div class="cell empty"></div>';
+    var days = MONTH_DAYS[month];
+    var start = settings.startDate;
+    for (var i = 0; i < days; i++) {
+      var day = i + 1;
+      var k = keyOf(month, day);
+      var dow = (fw + i) % 7;
+      var mark = marks[k];
+      var disabled = k < start;
+      var c = ["cell"];
+      if (dow === 0) c.push("sun"); else if (dow === 6) c.push("sat");
+      if (mark) c.push("on-" + mark);
+      if (disabled) c.push("disabled");
+      html += '<div class="' + c.join(" ") + '" data-key="' + k + '">'
+            + '<span class="d">' + day + "</span>"
+            + (mark ? '<span class="tag">' + TYPES[mark] + "</span>" : "")
+            + "</div>";
+    }
+    cal.innerHTML = html;
+  }
+
+  function cycleDay(k) {
+    if (k < settings.startDate) return;
+    var cur = marks[k] || null;
+    var idx = CYCLE.indexOf(cur);
+    var next = CYCLE[(idx + 1) % CYCLE.length];
+    if (next === null) delete marks[k]; else marks[k] = next;
+    saveMarks();
+    buildCalendar();
+    updateStats();
+  }
+
+  function init() {
+    load();
+    // 設定入力に現在値を反映
+    document.getElementById("inStart").value = settings.startDate;
+    document.getElementById("inAnnual").value = settings.annualHolidays;
+    document.getElementById("inGranted").value = settings.grantedPaidLeave;
+
+    document.getElementById("prevM").addEventListener("click", function () { month = (month + 11) % 12; buildCalendar(); });
+    document.getElementById("nextM").addEventListener("click", function () { month = (month + 1) % 12; buildCalendar(); });
+
+    document.getElementById("cal").addEventListener("click", function (ev) {
+      var cell = ev.target.closest(".cell");
+      if (!cell || cell.classList.contains("empty") || cell.classList.contains("disabled")) return;
+      var k = cell.getAttribute("data-key");
+      if (k) cycleDay(k);
+    });
+
+    document.getElementById("setBtn").addEventListener("click", function () {
+      document.getElementById("panel").classList.toggle("open");
+    });
+
+    document.getElementById("inStart").addEventListener("change", function (e) {
+      settings.startDate = e.target.value || "2026-01-01";
+      saveSettings(); buildCalendar(); updateStats();
+    });
+    document.getElementById("inAnnual").addEventListener("input", function (e) {
+      settings.annualHolidays = Number(e.target.value) || 0;
+      saveSettings(); updateStats();
+    });
+    document.getElementById("inGranted").addEventListener("input", function (e) {
+      settings.grantedPaidLeave = Number(e.target.value) || 0;
+      saveSettings(); updateStats();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", function () {
+      if (window.confirm("記録した休日・有給をすべて消去しますか？")) {
+        marks = {}; saveMarks(); buildCalendar(); updateStats();
+      }
+    });
+
+    buildCalendar();
+    updateStats();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+</script>
+</body>
+</html>
