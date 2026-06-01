@@ -1,323 +1,311 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<title>年間休日管理 2026</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
-  :root {
-    --paper: #f6f2e9;
-    --paper2: #efe9db;
-    --ink: #20303f;
-    --ink-soft: #5b6b78;
-    --indigo: #2f5d8a;
-    --vermilion: #c2492f;
-    --amber: #c98a2b;
-    --line: #d8cfbd;
-    --card: #fffdf8;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; }
-  body {
-    font-family: 'Zen Kaku Gothic New', system-ui, sans-serif;
-    color: var(--ink);
-    background:
-      radial-gradient(circle at 12% 0%, #fbf8f1 0%, transparent 55%),
-      var(--paper);
-    -webkit-font-smoothing: antialiased;
-  }
-  .hm-root {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 24px 16px 48px;
-  }
-  .hm-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom: 4px; }
-  .hm-title { font-family:'Shippori Mincho B1',serif; font-weight:700; font-size: 22px; letter-spacing:.04em; }
-  .hm-year { font-family:'Shippori Mincho B1',serif; color: var(--ink-soft); font-size:13px; }
-  .hm-note { font-size:11px; color:var(--ink-soft); line-height:1.6; margin: 6px 0 16px; border-left:3px solid var(--line); padding-left:10px; }
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 
-  .hero { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
-  .hero-card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 14px 12px; }
-  .hero-card .lab { font-size:12px; color:var(--ink-soft); font-weight:500; }
-  .hero-card .val { font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:34px; line-height:1.05; margin-top:6px; }
-  .hero-card .unit { font-size:13px; font-family:'Zen Kaku Gothic New'; color:var(--ink-soft); margin-left:3px; font-weight:400; }
-  .hero-card.holiday .val { color:var(--indigo); }
-  .hero-card.paid .val { color:var(--vermilion); }
-  .neg { color:#b23b2a !important; }
+// ---- 永続ストレージ（window.storage が無い環境ではメモリにフォールバック）----
+const memoryStore = {};
+const store = {
+  async get(key) {
+    try {
+      if (typeof window !== "undefined" && window.storage) {
+        const r = await window.storage.get(key);
+        return r ? r.value : null;
+      }
+    } catch (e) {}
+    return key in memoryStore ? memoryStore[key] : null;
+  },
+  async set(key, value) {
+    try {
+      if (typeof window !== "undefined" && window.storage) {
+        await window.storage.set(key, value);
+        return;
+      }
+    } catch (e) {}
+    memoryStore[key] = value;
+  },
+};
 
-  .grid4 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
-  .mini { background:var(--paper2); border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
-  .mini .lab { font-size:11px; color:var(--ink-soft); }
-  .mini .val { font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:19px; margin-top:2px; }
-  .mini .sub { font-size:10px; color:var(--ink-soft); margin-left:4px; font-family:'Zen Kaku Gothic New'; font-weight:400; }
-  .total { margin-bottom:18px; }
+const MARKS_KEY = "holiday-marks";
+const SETTINGS_KEY = "holiday-settings";
 
-  .navbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-  .navbar button { background:none; border:1px solid var(--line); border-radius:8px; width:38px; height:38px; font-size:18px; color:var(--ink); cursor:pointer; }
-  .navbar button:active { background:var(--paper2); }
-  .navbar .m { font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:18px; }
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const TYPES = {
+  holiday: { label: "休み", short: "休" },
+  paid: { label: "有給", short: "有" },
+  half: { label: "半休", short: "半" },
+};
+const CYCLE = [null, "holiday", "paid", "half"];
 
-  .cal { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
-  .dow { text-align:center; font-size:11px; color:var(--ink-soft); padding:2px 0; font-weight:500; }
-  .dow.sun { color:var(--vermilion); }
-  .dow.sat { color:var(--indigo); }
-  .cell { aspect-ratio:1; border-radius:10px; border:1px solid var(--line); background:var(--card);
-          display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;
-          font-size:13px; user-select:none; transition:transform .05s; }
-  .cell:active { transform:scale(.93); }
-  .cell.empty { border:none; background:none; cursor:default; }
-  .cell.disabled { opacity:.32; cursor:not-allowed; }
-  .cell .d { font-weight:500; }
-  .cell .tag { font-size:9px; margin-top:1px; font-weight:700; letter-spacing:.02em; }
-  .cell.sun .d { color:var(--vermilion); }
-  .cell.sat .d { color:var(--indigo); }
-  .cell.on-holiday { background:rgba(47,93,138,.14); border-color:var(--indigo); }
-  .cell.on-paid { background:rgba(194,73,47,.13); border-color:var(--vermilion); }
-  .cell.on-half { background:rgba(201,138,43,.15); border-color:var(--amber); }
-  .cell.on-holiday .tag { color:var(--indigo); }
-  .cell.on-paid .tag { color:var(--vermilion); }
-  .cell.on-half .tag { color:var(--amber); }
+const pad = (n) => String(n).padStart(2, "0");
+const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+const firstWeekday = (y, m) => new Date(y, m, 1).getDay();
+const parseDate = (s) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return { y, m: m - 1, d };
+};
 
-  .legend { display:flex; gap:14px; justify-content:center; margin:14px 0 4px; flex-wrap:wrap; }
-  .legend span { font-size:11px; color:var(--ink-soft); display:flex; align-items:center; gap:5px; }
-  .dot { width:11px; height:11px; border-radius:3px; display:inline-block; }
-  .tap-hint { text-align:center; font-size:11px; color:var(--ink-soft); margin-top:8px; }
+export default function HolidayManager() {
+  const [marks, setMarks] = useState({});
+  const [settings, setSettings] = useState({
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    annualHolidays: 116,
+    grantedPaidLeave: 10,
+  });
+  const [cursorIdx, setCursorIdx] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  .setbtn { width:100%; margin-top:18px; background:none; border:1px solid var(--line); border-radius:10px;
-            padding:12px; font-family:'Zen Kaku Gothic New'; font-size:13px; color:var(--ink-soft); cursor:pointer; }
-  .panel { margin-top:10px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; display:none; }
-  .panel.open { display:block; }
-  .field { margin-bottom:12px; }
-  .field:last-child { margin-bottom:0; }
-  .field label { display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; }
-  .field input { width:100%; padding:10px; border:1px solid var(--line); border-radius:8px;
-                 font-family:'Zen Kaku Gothic New'; font-size:16px; background:var(--paper); color:var(--ink); }
-  .field .help { font-size:10px; color:var(--ink-soft); margin-top:4px; line-height:1.5; }
-  .reset { background:none; border:none; color:var(--vermilion); font-size:12px; cursor:pointer; text-decoration:underline; padding:0; margin-top:6px; }
-</style>
-</head>
-<body>
-<div id="app" class="hm-root">
-  <div class="hm-head">
-    <div class="hm-title">年間休日管理</div>
-    <div class="hm-year">2026年</div>
-  </div>
-  <div class="hm-note">
-    年間休日（所定休日）と有給は別枠です。半休は0.5日として有給に換算します。日付をタップすると 休み→有給→半休→解除 と切替わります。データはこの端末のブラウザに保存されます。
-  </div>
+  // 初期ロード
+  useEffect(() => {
+    (async () => {
+      const m = await store.get(MARKS_KEY);
+      const s = await store.get(SETTINGS_KEY);
+      if (m) { try { setMarks(JSON.parse(m)); } catch (e) {} }
+      if (s) { try { setSettings((prev) => ({ ...prev, ...JSON.parse(s) })); } catch (e) {} }
+      setLoaded(true);
+    })();
+  }, []);
 
-  <div class="hero">
-    <div class="hero-card holiday">
-      <div class="lab">休日 残り</div>
-      <div class="val"><span id="holidayLeft">116</span><span class="unit">日</span></div>
-    </div>
-    <div class="hero-card paid">
-      <div class="lab">有給 残り</div>
-      <div class="val"><span id="paidLeft">10</span><span class="unit">日</span></div>
-    </div>
-  </div>
+  // 保存
+  useEffect(() => { if (loaded) store.set(MARKS_KEY, JSON.stringify(marks)); }, [marks, loaded]);
+  useEffect(() => { if (loaded) store.set(SETTINGS_KEY, JSON.stringify(settings)); }, [settings, loaded]);
 
-  <div class="grid4">
-    <div class="mini"><div class="lab">休日合計</div><div class="val"><span id="stHoliday">0</span><span class="sub">日</span></div></div>
-    <div class="mini"><div class="lab">有給合計</div><div class="val"><span id="stPaidTotal">0</span><span class="sub">日</span></div></div>
-    <div class="mini"><div class="lab">有給</div><div class="val"><span id="stPaidFull">0</span><span class="sub">日</span></div></div>
-    <div class="mini"><div class="lab">半休（日換算）</div><div class="val"><span id="stHalf">0</span><span class="sub" id="stHalfCount">日 / 0回</span></div></div>
-  </div>
-  <div class="mini total"><div class="lab">総合計（休日＋有給）</div><div class="val"><span id="stGrand">0</span><span class="sub">日</span></div></div>
+  const startKey = settings.startDate;
+  const endKey = settings.endDate;
 
-  <div class="navbar">
-    <button id="prevM" aria-label="前月">‹</button>
-    <div class="m" id="monthLabel">1月</div>
-    <button id="nextM" aria-label="翌月">›</button>
-  </div>
-  <div class="cal" id="cal"></div>
+  // 表示対象の月リスト（開始日〜終了日、年またぎ対応）
+  const months = useMemo(() => {
+    const s = parseDate(startKey);
+    const e = parseDate(endKey);
+    const startIdx = s.y * 12 + s.m;
+    const endIdx = e.y * 12 + e.m;
+    if (endIdx < startIdx) return [{ year: s.y, month: s.m }];
+    const list = [];
+    for (let i = startIdx; i <= endIdx; i++) {
+      list.push({ year: Math.floor(i / 12), month: i % 12 });
+    }
+    return list;
+  }, [startKey, endKey]);
 
-  <div class="legend">
-    <span><i class="dot" style="background:var(--indigo)"></i>休み</span>
-    <span><i class="dot" style="background:var(--vermilion)"></i>有給</span>
-    <span><i class="dot" style="background:var(--amber)"></i>半休</span>
-  </div>
-  <div class="tap-hint">開始日より前の日付は操作できません</div>
+  // カーソルが範囲外になったら丸める
+  useEffect(() => {
+    if (cursorIdx > months.length - 1) setCursorIdx(Math.max(0, months.length - 1));
+  }, [months.length, cursorIdx]);
 
-  <button class="setbtn" id="setBtn">設定（開始日・年間休日数・有給付与日数）</button>
-  <div class="panel" id="panel">
-    <div class="field">
-      <label>開始日（入社時期に合わせて変更）</label>
-      <input type="date" id="inStart" min="2026-01-01" max="2026-12-31" />
-      <div class="help">この日より前の集計は除外されます。</div>
-    </div>
-    <div class="field">
-      <label>年間休日数（所定休日）</label>
-      <input type="number" id="inAnnual" min="0" />
-      <div class="help">年度途中入社は116日の単純日割りではなく、開始日〜12/31の実際の所定休日数を入力してください。</div>
-    </div>
-    <div class="field">
-      <label>有給付与日数</label>
-      <input type="number" id="inGranted" min="0" />
-      <div class="help">労基法では勤続6か月で10日、以降 11／12／14／16／18／20日。前倒し付与や繰越分があれば実数を入力してください。</div>
-    </div>
-    <button class="reset" id="resetBtn">記録をすべてリセット</button>
-  </div>
-</div>
+  const cur = months[Math.min(cursorIdx, months.length - 1)] || { year: 2026, month: 0 };
 
-<script>
-(function () {
-  var YEAR = 2026;
-  var WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
-  var MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // 2026は平年
-  var TYPES = { holiday: "休", paid: "有", half: "半" };
-  var CYCLE = [null, "holiday", "paid", "half"];
-  var MARKS_KEY = "holiday-marks-2026";
-  var SETTINGS_KEY = "holiday-settings-2026";
+  const cycleDay = useCallback(
+    (k) => {
+      if (k < startKey || k > endKey) return;
+      setMarks((prev) => {
+        const idx = CYCLE.indexOf(prev[k] || null);
+        const next = CYCLE[(idx + 1) % CYCLE.length];
+        const copy = { ...prev };
+        if (next === null) delete copy[k];
+        else copy[k] = next;
+        return copy;
+      });
+    },
+    [startKey, endKey]
+  );
 
-  var marks = {};
-  var settings = { startDate: "2026-01-01", annualHolidays: 116, grantedPaidLeave: 10 };
-  var month = 0;
-
-  // ---- 保存（localStorage、無ければメモリ） ----
-  var mem = {};
-  function lsGet(k) { try { if (window.localStorage) return localStorage.getItem(k); } catch (e) {} return (k in mem) ? mem[k] : null; }
-  function lsSet(k, v) { try { if (window.localStorage) { localStorage.setItem(k, v); return; } } catch (e) {} mem[k] = v; }
-
-  function load() {
-    var m = lsGet(MARKS_KEY); if (m) { try { marks = JSON.parse(m); } catch (e) {} }
-    var s = lsGet(SETTINGS_KEY); if (s) { try { var o = JSON.parse(s); for (var key in o) settings[key] = o[key]; } catch (e) {} }
-  }
-  function saveMarks() { lsSet(MARKS_KEY, JSON.stringify(marks)); }
-  function saveSettings() { lsSet(SETTINGS_KEY, JSON.stringify(settings)); }
-
-  function pad(n) { return n < 10 ? "0" + n : "" + n; }
-  function keyOf(mo, d) { return YEAR + "-" + pad(mo + 1) + "-" + pad(d); }
-  function firstWeekday(mo) { return new Date(YEAR, mo, 1).getDay(); }
-  function fmtNum(n) { return (n % 1 === 0) ? String(n) : n.toFixed(1); }
-
-  function computeStats() {
-    var holiday = 0, paidFull = 0, half = 0;
-    var start = settings.startDate;
-    for (var k in marks) {
-      if (k < start) continue;
-      var v = marks[k];
+  // 集計（期間内のみ）
+  const stats = useMemo(() => {
+    let holiday = 0, paidFull = 0, half = 0;
+    for (const [k, v] of Object.entries(marks)) {
+      if (k < startKey || k > endKey) continue;
       if (v === "holiday") holiday++;
       else if (v === "paid") paidFull++;
       else if (v === "half") half++;
     }
-    var halfDays = half * 0.5;
-    var paidTotal = paidFull + halfDays;
+    const halfDays = half * 0.5;
+    const paidTotal = paidFull + halfDays;
     return {
-      holiday: holiday, paidFull: paidFull, halfCount: half, halfDays: halfDays,
-      paidTotal: paidTotal, grandTotal: holiday + paidTotal,
+      holiday, paidFull, halfCount: half, halfDays, paidTotal,
+      grandTotal: holiday + paidTotal,
       holidayLeft: settings.annualHolidays - holiday,
-      paidLeft: settings.grantedPaidLeave - paidTotal
+      paidLeft: settings.grantedPaidLeave - paidTotal,
     };
-  }
+  }, [marks, startKey, endKey, settings.annualHolidays, settings.grantedPaidLeave]);
 
-  function setVal(id, n, negCheck) {
-    var el = document.getElementById(id);
-    el.textContent = fmtNum(n);
-    if (negCheck) { if (n < 0) el.classList.add("neg"); else el.classList.remove("neg"); }
-  }
+  const fw = firstWeekday(cur.year, cur.month);
+  const days = daysInMonth(cur.year, cur.month);
+  const fmtNum = (n) => (Number.isInteger(n) ? n : n.toFixed(1));
 
-  function updateStats() {
-    var s = computeStats();
-    setVal("holidayLeft", s.holidayLeft, true);
-    setVal("paidLeft", s.paidLeft, true);
-    setVal("stHoliday", s.holiday);
-    setVal("stPaidTotal", s.paidTotal);
-    setVal("stPaidFull", s.paidFull);
-    setVal("stHalf", s.halfDays);
-    document.getElementById("stHalfCount").textContent = "日 / " + s.halfCount + "回";
-    setVal("stGrand", s.grandTotal);
-  }
+  const setStart = (v) => {
+    if (!v) return;
+    setSettings((s) => ({ ...s, startDate: v, endDate: v > s.endDate ? v : s.endDate }));
+  };
+  const setEnd = (v) => {
+    if (!v) return;
+    setSettings((s) => ({ ...s, endDate: v, startDate: v < s.startDate ? v : s.startDate }));
+  };
 
-  function buildCalendar() {
-    document.getElementById("monthLabel").textContent = (month + 1) + "月";
-    var cal = document.getElementById("cal");
-    var html = "";
-    for (var w = 0; w < 7; w++) {
-      var cls = w === 0 ? "dow sun" : (w === 6 ? "dow sat" : "dow");
-      html += '<div class="' + cls + '">' + WEEKDAYS[w] + "</div>";
-    }
-    var fw = firstWeekday(month);
-    for (var e = 0; e < fw; e++) html += '<div class="cell empty"></div>';
-    var days = MONTH_DAYS[month];
-    var start = settings.startDate;
-    for (var i = 0; i < days; i++) {
-      var day = i + 1;
-      var k = keyOf(month, day);
-      var dow = (fw + i) % 7;
-      var mark = marks[k];
-      var disabled = k < start;
-      var c = ["cell"];
-      if (dow === 0) c.push("sun"); else if (dow === 6) c.push("sat");
-      if (mark) c.push("on-" + mark);
-      if (disabled) c.push("disabled");
-      html += '<div class="' + c.join(" ") + '" data-key="' + k + '">'
-            + '<span class="d">' + day + "</span>"
-            + (mark ? '<span class="tag">' + TYPES[mark] + "</span>" : "")
-            + "</div>";
-    }
-    cal.innerHTML = html;
-  }
+  return (
+    <div className="hm-root">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+        .hm-root {
+          --paper:#f6f2e9; --paper2:#efe9db; --ink:#20303f; --ink-soft:#5b6b78;
+          --indigo:#2f5d8a; --vermilion:#c2492f; --amber:#c98a2b; --line:#d8cfbd; --card:#fffdf8;
+          font-family:'Zen Kaku Gothic New',system-ui,sans-serif; color:var(--ink);
+          background:radial-gradient(circle at 12% 0%, #fbf8f1 0%, transparent 55%), var(--paper);
+          min-height:100%; max-width:480px; margin:0 auto; padding:20px 16px 40px; box-sizing:border-box;
+        }
+        .hm-root *{box-sizing:border-box;}
+        .hm-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:4px;}
+        .hm-title{font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:22px; letter-spacing:.04em;}
+        .hm-range{font-family:'Shippori Mincho B1',serif; color:var(--ink-soft); font-size:12px;}
+        .hm-note{font-size:11px; color:var(--ink-soft); line-height:1.6; margin:6px 0 16px; border-left:3px solid var(--line); padding-left:10px;}
+        .hero{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+        .hero-card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 14px 12px;}
+        .hero-card .lab{font-size:12px; color:var(--ink-soft); font-weight:500;}
+        .hero-card .val{font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:34px; line-height:1.05; margin-top:6px;}
+        .hero-card .unit{font-size:13px; font-family:'Zen Kaku Gothic New'; color:var(--ink-soft); margin-left:3px; font-weight:400;}
+        .hero-card.holiday .val{color:var(--indigo);}
+        .hero-card.paid .val{color:var(--vermilion);}
+        .neg{color:#b23b2a !important;}
+        .grid4{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;}
+        .mini{background:var(--paper2); border:1px solid var(--line); border-radius:10px; padding:9px 11px;}
+        .mini .lab{font-size:11px; color:var(--ink-soft);}
+        .mini .val{font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:19px; margin-top:2px;}
+        .mini .sub{font-size:10px; color:var(--ink-soft); margin-left:4px; font-family:'Zen Kaku Gothic New'; font-weight:400;}
+        .navbar{display:flex; align-items:center; justify-content:space-between; margin:18px 0 10px;}
+        .navbar button{background:none; border:1px solid var(--line); border-radius:8px; width:34px; height:34px; font-size:16px; color:var(--ink); cursor:pointer;}
+        .navbar button:disabled{opacity:.3; cursor:default;}
+        .navbar button:active:not(:disabled){background:var(--paper2);}
+        .navbar .m{font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:18px;}
+        .navbar .m small{font-family:'Zen Kaku Gothic New'; font-weight:400; font-size:12px; color:var(--ink-soft); margin-right:6px;}
+        .cal{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
+        .dow{text-align:center; font-size:11px; color:var(--ink-soft); padding:2px 0; font-weight:500;}
+        .dow.sun{color:var(--vermilion);} .dow.sat{color:var(--indigo);}
+        .cell{aspect-ratio:1; border-radius:10px; border:1px solid var(--line); background:var(--card);
+              display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;
+              font-size:13px; user-select:none; transition:transform .05s;}
+        .cell:active{transform:scale(.93);}
+        .cell.empty{border:none; background:none; cursor:default;}
+        .cell.disabled{opacity:.32; cursor:not-allowed;}
+        .cell .d{font-weight:500;}
+        .cell .tag{font-size:9px; margin-top:1px; font-weight:700;}
+        .cell.sun .d{color:var(--vermilion);} .cell.sat .d{color:var(--indigo);}
+        .cell.on-holiday{background:rgba(47,93,138,.14); border-color:var(--indigo);}
+        .cell.on-paid{background:rgba(194,73,47,.13); border-color:var(--vermilion);}
+        .cell.on-half{background:rgba(201,138,43,.15); border-color:var(--amber);}
+        .cell.on-holiday .tag{color:var(--indigo);}
+        .cell.on-paid .tag{color:var(--vermilion);}
+        .cell.on-half .tag{color:var(--amber);}
+        .legend{display:flex; gap:14px; justify-content:center; margin:14px 0 4px; flex-wrap:wrap;}
+        .legend span{font-size:11px; color:var(--ink-soft); display:flex; align-items:center; gap:5px;}
+        .dot{width:11px; height:11px; border-radius:3px; display:inline-block;}
+        .tap-hint{text-align:center; font-size:11px; color:var(--ink-soft); margin-top:8px;}
+        .setbtn{width:100%; margin-top:18px; background:none; border:1px solid var(--line); border-radius:10px;
+                padding:11px; font-family:'Zen Kaku Gothic New'; font-size:13px; color:var(--ink-soft); cursor:pointer;}
+        .panel{margin-top:10px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px;}
+        .field{margin-bottom:12px;} .field:last-child{margin-bottom:0;}
+        .field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px;}
+        .field input{width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+                     font-family:'Zen Kaku Gothic New'; font-size:14px; background:var(--paper); color:var(--ink);}
+        .field .help{font-size:10px; color:var(--ink-soft); margin-top:4px; line-height:1.5;}
+        .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+        .reset{background:none; border:none; color:var(--vermilion); font-size:12px; cursor:pointer; text-decoration:underline; padding:0; margin-top:6px;}
+      `}</style>
 
-  function cycleDay(k) {
-    if (k < settings.startDate) return;
-    var cur = marks[k] || null;
-    var idx = CYCLE.indexOf(cur);
-    var next = CYCLE[(idx + 1) % CYCLE.length];
-    if (next === null) delete marks[k]; else marks[k] = next;
-    saveMarks();
-    buildCalendar();
-    updateStats();
-  }
+      <div className="hm-head">
+        <div className="hm-title">年間休日管理</div>
+        <div className="hm-range">{startKey} 〜 {endKey}</div>
+      </div>
+      <div className="hm-note">
+        集計期間は「開始日〜終了日」です。入社時期に合わせ開始日を前年にも設定できます。年間休日・有給は<strong>この1サイクル分</strong>の数値を入力してください（期間が2年度にまたがると数値が混在します）。日付タップで 休み→有給→半休→解除。半休は0.5日換算。
+      </div>
 
-  function init() {
-    load();
-    // 設定入力に現在値を反映
-    document.getElementById("inStart").value = settings.startDate;
-    document.getElementById("inAnnual").value = settings.annualHolidays;
-    document.getElementById("inGranted").value = settings.grantedPaidLeave;
+      <div className="hero">
+        <div className="hero-card holiday">
+          <div className="lab">休日 残り</div>
+          <div className={"val" + (stats.holidayLeft < 0 ? " neg" : "")}>{fmtNum(stats.holidayLeft)}<span className="unit">日</span></div>
+        </div>
+        <div className="hero-card paid">
+          <div className="lab">有給 残り</div>
+          <div className={"val" + (stats.paidLeft < 0 ? " neg" : "")}>{fmtNum(stats.paidLeft)}<span className="unit">日</span></div>
+        </div>
+      </div>
 
-    document.getElementById("prevM").addEventListener("click", function () { month = (month + 11) % 12; buildCalendar(); });
-    document.getElementById("nextM").addEventListener("click", function () { month = (month + 1) % 12; buildCalendar(); });
+      <div className="grid4">
+        <div className="mini"><div className="lab">休日合計</div><div className="val">{fmtNum(stats.holiday)}<span className="sub">日</span></div></div>
+        <div className="mini"><div className="lab">有給合計</div><div className="val">{fmtNum(stats.paidTotal)}<span className="sub">日</span></div></div>
+        <div className="mini"><div className="lab">有給</div><div className="val">{fmtNum(stats.paidFull)}<span className="sub">日</span></div></div>
+        <div className="mini"><div className="lab">半休（日換算）</div><div className="val">{fmtNum(stats.halfDays)}<span className="sub">日 / {stats.halfCount}回</span></div></div>
+      </div>
+      <div className="mini">
+        <div className="lab">総合計（休日＋有給）</div>
+        <div className="val">{fmtNum(stats.grandTotal)}<span className="sub">日</span></div>
+      </div>
 
-    document.getElementById("cal").addEventListener("click", function (ev) {
-      var cell = ev.target.closest(".cell");
-      if (!cell || cell.classList.contains("empty") || cell.classList.contains("disabled")) return;
-      var k = cell.getAttribute("data-key");
-      if (k) cycleDay(k);
-    });
+      <div className="navbar">
+        <button onClick={() => setCursorIdx((i) => Math.max(0, i - 1))} disabled={cursorIdx <= 0} aria-label="前月">‹</button>
+        <div className="m"><small>{cur.year}年</small>{cur.month + 1}月</div>
+        <button onClick={() => setCursorIdx((i) => Math.min(months.length - 1, i + 1))} disabled={cursorIdx >= months.length - 1} aria-label="翌月">›</button>
+      </div>
+      <div className="cal">
+        {WEEKDAYS.map((w, i) => (
+          <div key={w} className={"dow" + (i === 0 ? " sun" : i === 6 ? " sat" : "")}>{w}</div>
+        ))}
+        {Array.from({ length: fw }).map((_, i) => (<div key={"e" + i} className="cell empty" />))}
+        {Array.from({ length: days }).map((_, i) => {
+          const day = i + 1;
+          const k = keyOf(cur.year, cur.month, day);
+          const dow = (fw + i) % 7;
+          const mark = marks[k];
+          const disabled = k < startKey || k > endKey;
+          const cls = ["cell", dow === 0 ? "sun" : dow === 6 ? "sat" : "", mark ? "on-" + mark : "", disabled ? "disabled" : ""].join(" ");
+          return (
+            <div key={k} className={cls} onClick={() => cycleDay(k)}>
+              <span className="d">{day}</span>
+              {mark && <span className="tag">{TYPES[mark].short}</span>}
+            </div>
+          );
+        })}
+      </div>
 
-    document.getElementById("setBtn").addEventListener("click", function () {
-      document.getElementById("panel").classList.toggle("open");
-    });
+      <div className="legend">
+        <span><i className="dot" style={{ background: "var(--indigo)" }} />休み</span>
+        <span><i className="dot" style={{ background: "var(--vermilion)" }} />有給</span>
+        <span><i className="dot" style={{ background: "var(--amber)" }} />半休</span>
+      </div>
+      <div className="tap-hint">集計期間外の日付は操作できません</div>
 
-    document.getElementById("inStart").addEventListener("change", function (e) {
-      settings.startDate = e.target.value || "2026-01-01";
-      saveSettings(); buildCalendar(); updateStats();
-    });
-    document.getElementById("inAnnual").addEventListener("input", function (e) {
-      settings.annualHolidays = Number(e.target.value) || 0;
-      saveSettings(); updateStats();
-    });
-    document.getElementById("inGranted").addEventListener("input", function (e) {
-      settings.grantedPaidLeave = Number(e.target.value) || 0;
-      saveSettings(); updateStats();
-    });
-
-    document.getElementById("resetBtn").addEventListener("click", function () {
-      if (window.confirm("記録した休日・有給をすべて消去しますか？")) {
-        marks = {}; saveMarks(); buildCalendar(); updateStats();
-      }
-    });
-
-    buildCalendar();
-    updateStats();
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
-  else init();
-})();
-</script>
-</body>
-</html>
+      <button className="setbtn" onClick={() => setShowSettings((s) => !s)}>
+        {showSettings ? "設定を閉じる" : "設定（期間・年間休日数・有給付与日数）"}
+      </button>
+      {showSettings && (
+        <div className="panel">
+          <div className="row2">
+            <div className="field">
+              <label>開始日（入社時期）</label>
+              <input type="date" min="2020-01-01" max={endKey} value={startKey} onChange={(e) => setStart(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>終了日</label>
+              <input type="date" min={startKey} max="2030-12-31" value={endKey} onChange={(e) => setEnd(e.target.value)} />
+            </div>
+          </div>
+          <div className="field" style={{ marginTop: 4 }}>
+            <div className="help">前年入社の場合は「入社日〜会社の年度末」を1サイクルとして設定してください。2年度分を1つで管理すると残数が混ざります。</div>
+          </div>
+          <div className="field">
+            <label>年間休日数（所定休日）</label>
+            <input type="number" min="0" value={settings.annualHolidays} onChange={(e) => setSettings((s) => ({ ...s, annualHolidays: Number(e.target.value) || 0 }))} />
+            <div className="help">年度途中入社は116日の単純日割りではなく、設定期間内の実際の所定休日数を入力してください。</div>
+          </div>
+          <div className="field">
+            <label>有給付与日数</label>
+            <input type="number" min="0" value={settings.grantedPaidLeave} onChange={(e) => setSettings((s) => ({ ...s, grantedPaidLeave: Number(e.target.value) || 0 }))} />
+            <div className="help">労基法では勤続6か月で10日、以降 11／12／14／16／18／20日。前倒し付与・繰越分があれば実数を入力してください。</div>
+          </div>
+          <button className="reset" onClick={() => { if (typeof window !== "undefined" && window.confirm("記録した休日・有給をすべて消去しますか？")) setMarks({}); }}>
+            記録をすべてリセット
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
