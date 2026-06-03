@@ -8,7 +8,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
   :root{
     --paper:#f6f2e9; --paper2:#efe9db; --ink:#20303f; --ink-soft:#5b6b78;
-    --indigo:#2f5d8a; --vermilion:#c2492f; --amber:#c98a2b; --line:#d8cfbd; --card:#fffdf8;
+    --indigo:#2f5d8a; --teal:#3f8a93; --vermilion:#c2492f; --amber:#c98a2b; --line:#d8cfbd; --card:#fffdf8;
   }
   *{box-sizing:border-box;}
   body{margin:0; background:radial-gradient(circle at 12% 0%, #fbf8f1 0%, transparent 55%), var(--paper);
@@ -26,8 +26,10 @@
   .hero-card.holiday .val{color:var(--indigo);}
   .hero-card.paid .val{color:var(--vermilion);}
   .neg{color:#b23b2a !important;}
-  .grid4{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;}
   .mini{background:var(--paper2); border:1px solid var(--line); border-radius:10px; padding:9px 11px;}
+  .mini.accent-h{border-left:3px solid var(--indigo);}
+  .mini.accent-p{border-left:3px solid var(--vermilion);}
   .mini .lab{font-size:11px; color:var(--ink-soft);}
   .mini .val{font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:19px; margin-top:2px;}
   .mini .sub{font-size:10px; color:var(--ink-soft); margin-left:4px; font-weight:400;}
@@ -46,17 +48,19 @@
   .cell.empty{border:none; background:none; cursor:default;}
   .cell.disabled{opacity:.32; cursor:not-allowed;}
   .cell .d{font-weight:500;}
-  .cell .tag{font-size:9px; margin-top:1px; font-weight:700;}
+  .cell .tag{font-size:8.5px; margin-top:1px; font-weight:700; line-height:1;}
   .cell.sun .d{color:var(--vermilion);} .cell.sat .d{color:var(--indigo);}
-  .cell.on-holiday{background:rgba(47,93,138,.14); border-color:var(--indigo);}
-  .cell.on-paid{background:rgba(194,73,47,.13); border-color:var(--vermilion);}
-  .cell.on-half{background:rgba(201,138,43,.15); border-color:var(--amber);}
+  .cell.on-holiday{background:rgba(47,93,138,.16); border-color:var(--indigo);}
+  .cell.on-holidayHalf{background:rgba(63,138,147,.16); border-color:var(--teal);}
+  .cell.on-paid{background:rgba(194,73,47,.14); border-color:var(--vermilion);}
+  .cell.on-paidHalf{background:rgba(201,138,43,.16); border-color:var(--amber);}
   .cell.on-holiday .tag{color:var(--indigo);}
+  .cell.on-holidayHalf .tag{color:var(--teal);}
   .cell.on-paid .tag{color:var(--vermilion);}
-  .cell.on-half .tag{color:var(--amber);}
-  .legend{display:flex; gap:14px; justify-content:center; margin:14px 0 4px; flex-wrap:wrap;}
-  .legend span{font-size:11px; color:var(--ink-soft); display:flex; align-items:center; gap:5px;}
-  .dot{width:11px; height:11px; border-radius:3px; display:inline-block;}
+  .cell.on-paidHalf .tag{color:var(--amber);}
+  .legend{display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; margin:14px 0 4px; padding:0 4px;}
+  .legend span{font-size:11px; color:var(--ink-soft); display:flex; align-items:center; gap:6px;}
+  .dot{width:11px; height:11px; border-radius:3px; display:inline-block; flex:0 0 auto;}
   .tap-hint{text-align:center; font-size:11px; color:var(--ink-soft); margin-top:8px;}
   .setbtn{width:100%; margin-top:18px; background:none; border:1px solid var(--line); border-radius:10px;
           padding:11px; font-size:13px; color:var(--ink-soft); cursor:pointer;}
@@ -68,6 +72,22 @@
   .field .help{font-size:10px; color:var(--ink-soft); margin-top:4px; line-height:1.5;}
   .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .reset{background:none; border:none; color:var(--vermilion); font-size:12px; cursor:pointer; text-decoration:underline; padding:0; margin-top:6px;}
+
+  /* 選択シート */
+  .ov{position:fixed; inset:0; background:rgba(20,30,40,.4); display:none; z-index:50;}
+  .ov.open{display:block;}
+  .sheet{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; background:var(--card);
+         border-top-left-radius:18px; border-top-right-radius:18px; padding:16px 16px calc(20px + env(safe-area-inset-bottom));
+         box-shadow:0 -10px 30px rgba(0,0,0,.18); z-index:51; animation:slideup .18s ease;}
+  @keyframes slideup{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .sheet-title{font-family:'Shippori Mincho B1',serif; font-weight:700; font-size:16px; text-align:center; margin-bottom:14px;}
+  .opts{display:grid; grid-template-columns:1fr 1fr; gap:9px;}
+  .opt{display:flex; align-items:center; gap:8px; padding:13px 12px; border:1px solid var(--line); border-radius:11px;
+       background:var(--paper); font-family:inherit; font-size:14px; color:var(--ink); cursor:pointer; text-align:left;}
+  .opt:active{background:var(--paper2);}
+  .opt.active{box-shadow:0 0 0 2px var(--ink) inset;}
+  .opt .dot{width:13px; height:13px; border-radius:4px;}
+  .opt-clear{grid-column:1 / -1; justify-content:center; color:var(--ink-soft);}
 </style>
 </head>
 <body>
@@ -77,11 +97,11 @@
     <div class="hm-range" id="range"></div>
   </div>
   <div class="hm-note">
-    集計期間は「開始日〜終了日」です。入社時期に合わせ開始日を前年にも設定できます。年間休日・有給は<strong>この1サイクル分</strong>の数値を入力してください。日付タップで 休み→有給→半休→解除。半休は0.5日換算。データはこのブラウザに保存されます。
+    集計期間は「開始日〜終了日」。入社時期に合わせ開始日を前年にも設定できます。日付をタップして区分を選択します。半休は0.5日換算で、希望休の半休は休日から、有給の半休は有給から引かれます。データはこのブラウザに保存されます。
   </div>
 
   <div class="hero" id="hero"></div>
-  <div class="grid4" id="grid"></div>
+  <div class="grid2" id="grid"></div>
   <div class="mini" id="total"></div>
 
   <div class="navbar">
@@ -92,9 +112,10 @@
   <div class="cal" id="cal"></div>
 
   <div class="legend">
-    <span><i class="dot" style="background:var(--indigo)"></i>休み</span>
-    <span><i class="dot" style="background:var(--vermilion)"></i>有給</span>
-    <span><i class="dot" style="background:var(--amber)"></i>半休</span>
+    <span><i class="dot" style="background:var(--indigo)"></i>休み（休日 1日）</span>
+    <span><i class="dot" style="background:var(--teal)"></i>半休・希望休（休日 0.5）</span>
+    <span><i class="dot" style="background:var(--vermilion)"></i>有給（有給 1日）</span>
+    <span><i class="dot" style="background:var(--amber)"></i>半休・有給（有給 0.5）</span>
   </div>
   <div class="tap-hint">集計期間外の日付は操作できません</div>
 
@@ -113,10 +134,28 @@
   </div>
 </div>
 
+<!-- 区分選択シート -->
+<div class="ov" id="ov">
+  <div class="sheet" id="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-title" id="sheetTitle"></div>
+    <div class="opts">
+      <button class="opt" data-type="holiday"><i class="dot" style="background:var(--indigo)"></i>休み</button>
+      <button class="opt" data-type="paid"><i class="dot" style="background:var(--vermilion)"></i>有給</button>
+      <button class="opt" data-type="holidayHalf"><i class="dot" style="background:var(--teal)"></i>半休（希望休）</button>
+      <button class="opt" data-type="paidHalf"><i class="dot" style="background:var(--amber)"></i>半休（有給）</button>
+      <button class="opt opt-clear" data-type="clear">解除</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
-  var TYPES={holiday:{short:'休'},paid:{short:'有'},half:{short:'半'}};
-  var CYCLE=[null,'holiday','paid','half'];
+  var TYPES={
+    holiday:    {short:'休',   pool:'holiday', days:1},
+    holidayHalf:{short:'休半', pool:'holiday', days:0.5},
+    paid:       {short:'有',   pool:'paid',    days:1},
+    paidHalf:   {short:'有半', pool:'paid',    days:0.5}
+  };
   var WEEKDAYS=['日','月','火','水','木','金','土'];
 
   function load(key,def){ try{ var v=localStorage.getItem(key); return v?JSON.parse(v):def; }catch(e){ return def; } }
@@ -125,6 +164,10 @@
   var marks=load('holiday-marks',{});
   var settings=Object.assign({startDate:'2026-01-01',endDate:'2026-12-31',annualHolidays:116,grantedPaidLeave:10}, load('holiday-settings',{}));
   var cursorIdx=0;
+  var selectedKey=null;
+
+  // 旧データ（half → paidHalf）を移行
+  for(var mk in marks){ if(marks[mk]==='half') marks[mk]='paidHalf'; }
 
   function pad(n){ return String(n).padStart(2,'0'); }
   function keyOf(y,m,d){ return y+'-'+pad(m+1)+'-'+pad(d); }
@@ -142,12 +185,21 @@
   }
 
   function computeStats(){
-    var sk=settings.startDate, ek=settings.endDate, holiday=0,paidFull=0,half=0;
+    var sk=settings.startDate, ek=settings.endDate;
+    var holidayFull=0, holidayHalf=0, paidFull=0, paidHalf=0;
     for(var k in marks){ if(!marks.hasOwnProperty(k)) continue; if(k<sk||k>ek) continue;
-      var v=marks[k]; if(v==='holiday')holiday++; else if(v==='paid')paidFull++; else if(v==='half')half++; }
-    var halfDays=half*0.5, paidTotal=paidFull+halfDays;
-    return {holiday:holiday,paidFull:paidFull,halfCount:half,halfDays:halfDays,paidTotal:paidTotal,
-      grandTotal:holiday+paidTotal, holidayLeft:settings.annualHolidays-holiday, paidLeft:settings.grantedPaidLeave-paidTotal};
+      var v=marks[k];
+      if(v==='holiday') holidayFull++;
+      else if(v==='holidayHalf') holidayHalf++;
+      else if(v==='paid') paidFull++;
+      else if(v==='paidHalf') paidHalf++;
+    }
+    var holidayHalfDays=holidayHalf*0.5, paidHalfDays=paidHalf*0.5;
+    var holidayTotal=holidayFull+holidayHalfDays, paidTotal=paidFull+paidHalfDays;
+    return {holidayFull:holidayFull, holidayHalf:holidayHalf, holidayHalfDays:holidayHalfDays,
+            paidFull:paidFull, paidHalf:paidHalf, paidHalfDays:paidHalfDays,
+            holidayTotal:holidayTotal, paidTotal:paidTotal, grandTotal:holidayTotal+paidTotal,
+            holidayLeft:settings.annualHolidays-holidayTotal, paidLeft:settings.grantedPaidLeave-paidTotal};
   }
 
   function renderStats(){
@@ -156,10 +208,12 @@
       '<div class="hero-card holiday"><div class="lab">休日 残り</div><div class="val'+(s.holidayLeft<0?' neg':'')+'">'+fmt(s.holidayLeft)+'<span class="unit">日</span></div></div>'+
       '<div class="hero-card paid"><div class="lab">有給 残り</div><div class="val'+(s.paidLeft<0?' neg':'')+'">'+fmt(s.paidLeft)+'<span class="unit">日</span></div></div>';
     document.getElementById('grid').innerHTML=
-      '<div class="mini"><div class="lab">休日合計</div><div class="val">'+fmt(s.holiday)+'<span class="sub">日</span></div></div>'+
-      '<div class="mini"><div class="lab">有給合計</div><div class="val">'+fmt(s.paidTotal)+'<span class="sub">日</span></div></div>'+
-      '<div class="mini"><div class="lab">有給</div><div class="val">'+fmt(s.paidFull)+'<span class="sub">日</span></div></div>'+
-      '<div class="mini"><div class="lab">半休（日換算）</div><div class="val">'+fmt(s.halfDays)+'<span class="sub">日 / '+s.halfCount+'回</span></div></div>';
+      '<div class="mini accent-h"><div class="lab">休日合計</div><div class="val">'+fmt(s.holidayTotal)+'<span class="sub">日</span></div></div>'+
+      '<div class="mini accent-p"><div class="lab">有給合計</div><div class="val">'+fmt(s.paidTotal)+'<span class="sub">日</span></div></div>'+
+      '<div class="mini accent-h"><div class="lab">休み</div><div class="val">'+fmt(s.holidayFull)+'<span class="sub">日</span></div></div>'+
+      '<div class="mini accent-p"><div class="lab">有給</div><div class="val">'+fmt(s.paidFull)+'<span class="sub">日</span></div></div>'+
+      '<div class="mini accent-h"><div class="lab">半休（希望休）</div><div class="val">'+fmt(s.holidayHalfDays)+'<span class="sub">日 / '+s.holidayHalf+'回</span></div></div>'+
+      '<div class="mini accent-p"><div class="lab">半休（有給）</div><div class="val">'+fmt(s.paidHalfDays)+'<span class="sub">日 / '+s.paidHalf+'回</span></div></div>';
     document.getElementById('total').innerHTML=
       '<div class="lab">総合計（休日＋有給）</div><div class="val">'+fmt(s.grandTotal)+'<span class="sub">日</span></div>';
   }
@@ -186,14 +240,37 @@
 
   function renderAll(){ renderStats(); renderCalendar(); }
 
-  // カレンダーのタップ（イベント委譲）
+  // 選択シート
+  var ov=document.getElementById('ov'), sheetTitle=document.getElementById('sheetTitle');
+  function openSheet(k){
+    selectedKey=k;
+    var p=parseDate(k);
+    sheetTitle.textContent=p.y+'年'+(p.m+1)+'月'+p.d+'日';
+    var cur=marks[k]||null;
+    var opts=document.querySelectorAll('.opt');
+    for(var i=0;i<opts.length;i++){
+      var t=opts[i].getAttribute('data-type');
+      if(t===cur) opts[i].classList.add('active'); else opts[i].classList.remove('active');
+    }
+    ov.classList.add('open');
+  }
+  function closeSheet(){ ov.classList.remove('open'); selectedKey=null; }
+  ov.addEventListener('click', closeSheet);
+  document.querySelectorAll('.opt').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      if(!selectedKey) return;
+      var t=btn.getAttribute('data-type');
+      if(t==='clear') delete marks[selectedKey]; else marks[selectedKey]=t;
+      save(); renderAll(); closeSheet();
+    });
+  });
+
+  // カレンダーのタップ
   document.getElementById('cal').addEventListener('click',function(ev){
     var cell=ev.target.closest('.cell'); if(!cell) return;
     var k=cell.getAttribute('data-key'); if(!k) return;
     if(k<settings.startDate||k>settings.endDate) return;
-    var idx=CYCLE.indexOf(marks[k]||null), next=CYCLE[(idx+1)%CYCLE.length];
-    if(next===null) delete marks[k]; else marks[k]=next;
-    save(); renderAll();
+    openSheet(k);
   });
 
   // 月送り
